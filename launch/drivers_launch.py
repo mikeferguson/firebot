@@ -29,5 +29,12 @@ def generate_launch_description():
             output='screen',
         ),
 
-        # TODO: add FLIR camera
+        # FLIR Lepton driver
+        Node(
+            name='lepton_driver',
+            package='fire_fighter',
+            executable='lepton_driver.py',
+            remappings=[('image', 'lepton/image'),
+                        ('region', 'lepton/flame_region')],
+        ),
     ])

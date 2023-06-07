@@ -30,4 +30,9 @@ install(
   DESTINATION share/${PROJECT_NAME}/
 )
 
+install(
+  PROGRAMS nodes/lepton_driver.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 ament_package()
