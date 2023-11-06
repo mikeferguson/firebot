@@ -57,6 +57,5 @@ def generate_launch_description():
             name='ld06_publisher',
             package='etherbotix',
             executable='ld06_publisher_node',
-            output='screen',
         ),
     ])
