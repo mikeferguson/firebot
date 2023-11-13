@@ -13,7 +13,7 @@
   </link>
   <link name="ld06_frame"/>
   <joint name="ld06_joint" type="fixed">
-    <origin rpy="0 0 0" xyz="0 0 0.1" />
+    <origin rpy="0 0 3.14" xyz="0 0 0.1" />
     <parent link="base_link" />
     <child link="ld06_frame" />
   </joint>
