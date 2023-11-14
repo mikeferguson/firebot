@@ -92,7 +92,7 @@ local_costmap:
       width: 1
       height: 1
       resolution: 0.02
-      robot_radius: 0.13335
+      robot_radius: 0.127
       footprint_padding: 0.0125
       plugins: ["obstacle_layer", "inflation_layer"]
       obstacle_layer:
@@ -120,7 +120,7 @@ global_costmap:
       publish_frequency: 1.0
       global_frame: map
       robot_base_frame: base_link
-      robot_radius: 0.13335
+      robot_radius: 0.127
       footprint_padding: 0.0125
       resolution: 0.05
       plugins: ["static_layer", "obstacle_layer", "inflation_layer"]

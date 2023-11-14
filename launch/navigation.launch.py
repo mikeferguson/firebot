@@ -30,7 +30,8 @@ def generate_launch_description():
             executable='controller_server',
             output='screen',
             parameters=[os.path.join(bringup_dir, 'config', 'nav2_params.yaml')],
-            remappings=[('cmd_vel', 'base_controller/command'), ]),
+            remappings=[('cmd_vel', 'base_controller/command'),
+                        ('odom', 'base_controller/odom')]),
 
         Node(
             package='nav2_planner',
