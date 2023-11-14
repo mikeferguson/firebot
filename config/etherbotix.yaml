@@ -6,8 +6,8 @@ etherbotix:
       type: "robot_controllers/DiffDriveBaseController"
       max_velocity_x: 0.243
       max_acceleration_x: 0.5
-      # Base width in meters
-      track_width: 0.150
+      # Base width in meters - tuned 11/14/2023
+      track_width: 0.162
       # 73mm wheels = 0.2293m rollout = 4.36 rotations / meter
       radians_per_meter: 27.397
       # hold position
