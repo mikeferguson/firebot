@@ -19,4 +19,4 @@ amcl:
     # Parameters because our map is small
     update_min_d: 0.2
     laser_likelihood_max_dist: 0.15
-    laser_max_range: 0.5
+    laser_max_range: 5.0
