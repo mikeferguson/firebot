@@ -2,19 +2,84 @@
 <robot name="fire_fighter">
   <link name="base_link">
     <visual>
-      <origin rpy="0 0 0" xyz="0 0 0" />
+      <origin rpy="0 0 0" xyz="-0.037 0 0.0485" />
       <geometry>
-        <box size="0.1 0.1 0.1" />
+        <box size="0.150 0.130 0.047" />
       </geometry>
-      <material name="Cyan">
-        <color rgba="0 1.0 1.0 1.0" />
+      <material name="Red">
+        <color rgba="1.0 0.0 0.0 1.0" />
       </material>
     </visual>
   </link>
-  <link name="ld06_frame"/>
+
+  <joint name="left_wheel_joint" type="continuous">
+    <origin xyz="0.0 0.077 0.0365" rpy="0 0 0" />
+    <parent link="base_link" />
+    <child link="left_wheel_link" />
+    <axis xyz="0 1 0" />
+  </joint>
+  <link name="left_wheel_link">
+    <visual>
+      <geometry>
+        <cylinder radius="0.0365" length="0.02032"/>
+      </geometry>
+      <material name="Black">
+        <color rgba="0.0 0.0 0.0 1.0" />
+      </material>
+      <origin xyz="0 0 0" rpy="1.57 0 0" />
+    </visual>
+  </link>
+
+  <joint name="right_wheel_joint" type="continuous">
+    <origin xyz="0.0 -0.077 0.0365" rpy="0 0 0" />
+    <parent link="base_link" />
+    <child link="right_wheel_link" />
+    <axis xyz="0 1 0" />
+  </joint>
+  <link name="right_wheel_link">
+    <visual>
+      <geometry>
+        <cylinder radius="0.0365" length="0.02032"/>
+      </geometry>
+      <material name="Black">
+        <color rgba="0.0 0.0 0.0 1.0" />
+      </material>
+      <origin xyz="0 0 0" rpy="1.57 0 0" />
+    </visual>
+  </link>
+
+  <joint name="top_deck_joint" type="fixed">
+    <origin rpy="0 0 0" xyz="0 0 0.109" />
+    <parent link="base_link" />
+    <child link="top_deck_link" />
+  </joint>
+  <link name="top_deck_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 1.57" />
+      <geometry>
+        <mesh filename="package://fire_fighter/config/top_deck.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="Red">
+        <color rgba="1.0 0.0 0.0 1.0" />
+      </material>
+    </visual>
+  </link>
+
+  <link name="ld06_frame">
+    <visual>
+      <geometry>
+        <cylinder radius="0.017" length="0.03"/>
+      </geometry>
+      <material name="Black">
+        <color rgba="0.0 0.0 0.0 1.0" />
+      </material>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+    </visual>
+  </link>
   <joint name="ld06_joint" type="fixed">
-    <origin rpy="0 0 3.14" xyz="0 0 0.1" />
+    <origin rpy="0 0 3.14" xyz="0 0 0.157" />
     <parent link="base_link" />
     <child link="ld06_frame" />
   </joint>
+
 </robot>
