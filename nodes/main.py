@@ -2,7 +2,11 @@
 
 # ROS2
 import rclpy
-from geometry_msgs.msg import PoseStamped
+from rclpy.node import Node
+from geometry_msgs.msg import PoseStamped, Twist
+from nav_msgs.msg import Odometry
+from sensor_msgs.msg import RegionOfInterest
+from math import acos, pi, radians
 from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 
 # Subroutines
@@ -31,6 +35,20 @@ class FirebotStateMachine(Node):
     state = STATE_WAIT_FOR_START
 
     def __init__(self):
+        # Subscribe to the lepton driver flame detection
+        self.roi = 0
+        self.roi_sub = self.create_subscription(RegionOfInterest, 'lepton/flame_region', self.roi_callback, 1)
+
+        # Subscribe to odometry for local panning motions
+        self.odom_x = 0.0
+        self.odom_y = 0.0
+        self.odom_th = 0.0
+        self.odom_sub = self.create_subscription(Odometry, 'base_controller/odom', self.odom_callback, 1)
+
+        # Publish twist command for local panning motions
+        self.cmd_pub = self.create_publisher(Twist, 'base_controller/command', 1)
+        self.search_targets = None
+
         # Action interface to nav2
         self.nav2 = BasicNavigator()
         self.get_logger().info("Waiting for nav2")
@@ -64,8 +82,17 @@ class FirebotStateMachine(Node):
                     self.nav2.goToPose(getStamped(ROOMS[self.next_room]))
 
         elif self.state == STATE_SEARCH_ROOM:
-            # TODO: search for the candle
-            self.state = STATE_NAV_TO_NEXT_ROOM
+            # Rotate the robot looking for candle
+            if self.search_targets == None:
+                self.search_targets = [self.odom_th - pi / 2, self.odom_th + pi / 2]
+                self.roi = None
+            if self.pan_to_targets(self.search_targets):
+                # Have panned in both directions, still no candle
+                self.state = STATE_NAV_TO_NEXT_ROOM
+            elif self.roi is not None:
+                # We have a candle! Stop the robot
+                self.stop_motion()
+                self.state = STATE_APPROACH_FIRE
 
         elif self.state == STATE_APPROACH_FIRE:
             # TODO: approach the fire
@@ -74,6 +101,52 @@ class FirebotStateMachine(Node):
         elif self.state == STATE_EXTINGUISH_FIRE:
             # TODO: turn on fan, rotate back and forth
             pass
+
+    #
+    # Fire Search Routines
+    #
+
+    ## @brief Pan towards the first of possibly several targets
+    ##
+    ## When a target is reached (based on odometry), it will be
+    ## removed from the list of targets.
+    def pan_to_targets(self, targets):
+        if abs(self.targets[0] - self.odom_th) < radians(5):
+            # Goal is met, pop it off
+            targets = targets[1: -1]
+            if len(targets) == 0:
+                # Note that we have panned to all targets
+                return True
+        # Compute direction to turn, and send command
+        msg = Twist()
+        msg.linear.x = 0.0
+        msg.angular.z = self.targets[0] - self.odom_th
+        msg.angular.z = min(msg.angular.z, 0.25)
+        msg.angular.z = max(msg.angular.z, -0.25)
+        self.cmd_pub.publish(msg)
+        # Not done panning yet
+        return False
+
+    ## @brief Stop all motion
+    def stop_motion(self):
+        msg = Twist()
+        msg.linear.x = 0.0
+        msg.angular.z = 0.0
+        self.cmd_pub.publish(msg)
+
+    #
+    # ROS2 Callbacks
+    #
+
+    ## @brief Callback for ROI of detected flame (if any)
+    def roi_callback(self, msg):
+        self.roi = msg
+
+    ## @brief Odometry from robot base
+    def odom_callback(self, msg):
+        self.odom_x = msg.pose.pose.position.x
+        self.odom_y = msg.pose.pose.position.x
+        self.odom_th = acos(msg.pose.pose.orientation.w) * 2.0
 
 
 if __name__=="__main__":
