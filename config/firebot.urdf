@@ -1,5 +1,5 @@
 <?xml version="1.0" ?>
-<robot name="fire_fighter">
+<robot name="firebot">
   <link name="base_link">
     <visual>
       <origin rpy="0 0 0" xyz="-0.037 0 0.0485" />
@@ -57,7 +57,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 1.57" />
       <geometry>
-        <mesh filename="package://fire_fighter/config/top_deck.stl" scale="0.001 0.001 0.001" />
+        <mesh filename="package://firebot/config/top_deck.stl" scale="0.001 0.001 0.001" />
       </geometry>
       <material name="Red">
         <color rgba="1.0 0.0 0.0 1.0" />

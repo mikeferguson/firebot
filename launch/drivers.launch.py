@@ -11,15 +11,15 @@ import xacro
 
 def generate_launch_description():
     # TODO: add URDF with neck position
-    bringup_dir = get_package_share_directory('fire_fighter')
-    urdf_path = os.path.join(bringup_dir, 'config', 'fire_fighter.urdf')
+    bringup_dir = get_package_share_directory('firebot')
+    urdf_path = os.path.join(bringup_dir, 'config', 'firebot.urdf')
 
     # Load the URDF into a parameter
     urdf = open(urdf_path).read()
 
     # Load the driver config
     driver_config = os.path.join(
-        get_package_share_directory('fire_fighter'),
+        get_package_share_directory('firebot'),
         'config', 'etherbotix.yaml'
     )
 
@@ -46,7 +46,7 @@ def generate_launch_description():
         # FLIR Lepton driver
         Node(
             name='lepton_driver',
-            package='fire_fighter',
+            package='firebot',
             executable='lepton_driver.py',
             remappings=[('image', 'lepton/image'),
                         ('region', 'lepton/flame_region')],

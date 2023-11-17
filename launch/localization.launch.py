@@ -10,7 +10,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     # Get the launch directory
-    bringup_dir = get_package_share_directory('fire_fighter')
+    bringup_dir = get_package_share_directory('firebot')
     lifecycle_nodes = ['map_server', 'amcl']
 
     return LaunchDescription([
