@@ -3,8 +3,6 @@ import os
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
@@ -15,15 +13,9 @@ def generate_launch_description():
                        'planner_server',
                        'behavior_server',
                        'bt_navigator']
-
-    #default_nav_to_pose_bt_xml = LaunchConfiguration('default_nav_to_pose_bt_xml')
+    tree = os.path.join(bringup_dir, 'config', 'behavior_tree.xml')
 
     return LaunchDescription([
-
-        DeclareLaunchArgument(
-            'default_nav_to_pose_bt_xml',
-            default_value=os.path.join(bringup_dir, 'behavior_trees', 'default.xml'),
-            description='Full path to the behavior tree xml file to use'),
 
         Node(
             package='nav2_controller',
@@ -52,7 +44,7 @@ def generate_launch_description():
             executable='bt_navigator',
             name='bt_navigator',
             output='screen',
-            parameters=[{'default_nav_to_pose_bt_xml': os.path.join(bringup_dir, 'config', 'behavior_tree.xml')},
+            parameters=[{'default_nav_to_pose_bt_xml': tree},
                         os.path.join(bringup_dir, 'config', 'nav2_params.yaml')]),
 
         Node(
@@ -63,4 +55,3 @@ def generate_launch_description():
             parameters=[{'autostart': True},
                         {'node_names': lifecycle_nodes}]),
     ])
-

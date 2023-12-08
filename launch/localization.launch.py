@@ -20,7 +20,8 @@ def generate_launch_description():
             executable='map_server',
             name='map_server',
             output='screen',
-            parameters=[{'yaml_filename': os.path.join(bringup_dir, 'config', 'map_shrunk_arena.yaml')}]),
+            parameters=[{'yaml_filename':
+                         os.path.join(bringup_dir, 'config', 'map_shrunk_arena.yaml')}]),
 
         Node(
             package='nav2_amcl',

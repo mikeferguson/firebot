@@ -1,13 +1,8 @@
 #!/usr/bin/env python3
 
-import os
-
-from ament_index_python.packages import get_package_share_directory
-
 from launch import LaunchDescription
 from launch_ros.actions import Node
 
-import xacro
 
 def generate_launch_description():
 
@@ -30,7 +25,7 @@ def generate_launch_description():
                          'axis_linear.x': 4,
                          'scale_linear.x': 1.0,
                          'axis_angular.yaw': 0,
-                         'scale_angular.yaw': 3.0} ],
+                         'scale_angular.yaw': 3.0}],
             remappings=[('cmd_vel', 'base_controller/command')],
             output='screen',
         ),

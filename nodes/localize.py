@@ -1,21 +1,20 @@
 #!/usr/bin/env python3
 
+from geometry_msgs.msg import PoseWithCovarianceStamped
+from poses import HOME
 import rclpy
 from rclpy.node import Node
-from geometry_msgs.msg import PoseWithCovarianceStamped
-
-from poses import HOME
 
 
 class Localization:
 
     def __init__(self, node):
-        self.pub = node.create_publisher(PoseWithCovarianceStamped, "initialpose", 1)
+        self.pub = node.create_publisher(PoseWithCovarianceStamped, 'initialpose', 1)
         self.node = node
 
     def localize_at_home(self):
         msg = PoseWithCovarianceStamped()
-        msg.header.frame_id = "map"
+        msg.header.frame_id = 'map'
         msg.header.stamp = self.node.get_clock().now().to_msg()
         msg.pose.pose = HOME
         msg.pose.covariance[0] = 0.0125
@@ -24,9 +23,9 @@ class Localization:
         self.pub.publish(msg)
 
 
-if __name__=="__main__":
+if __name__ == '__main__':
     rclpy.init()
-    node = Node("localize")
+    node = Node('localize')
 
     localize = Localization(node)
     localize.localize_at_home()
