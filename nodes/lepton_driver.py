@@ -43,7 +43,7 @@ class LeptonDriver(Node):
         ret, frame = self.camera.read()
         if frame is None:
             # TODO: recover from this
-            self.get_logger.warn('Unable to get image')
+            self.get_logger().warn('Unable to get image')
             return
 
         if self.mode == self.MODE_RAW_TEMP:
