@@ -63,3 +63,5 @@ else:
     ROOM4.position.y = 0.9865974187850952
     ROOM4.orientation.z = 0.0
     ROOM4.orientation.w = 1.0
+
+ROOMS = [ROOM1, ROOM2, ROOM3, ROOM4]
