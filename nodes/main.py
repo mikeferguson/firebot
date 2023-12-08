@@ -5,6 +5,7 @@ from math import atan2, pi, radians
 
 # ROS2
 from angles import shortest_angular_distance
+from etherbotix import Etherbotix
 from geometry_msgs.msg import PoseStamped, Twist
 from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 from nav_msgs.msg import Odometry
@@ -14,14 +15,15 @@ from rclpy.node import Node
 from sensor_msgs.msg import RegionOfInterest
 
 # States
-STATE_WAIT_FOR_START = 0
-STATE_NAV_TO_NEXT_ROOM = 1
-STATE_NAV_IN_PROGRESS = 2
-STATE_SEARCH_ROOM = 3
-STATE_APPROACH_FIRE = 4
-STATE_EXTINGUISH_FIRE = 5
-STATE_RETURN_HOME = 6
-STATE_DONE = 7
+STATE_WAIT_FOR_PUSH = 0
+STATE_WAIT_FOR_RELEASE = 1
+STATE_NAV_TO_NEXT_ROOM = 2
+STATE_NAV_IN_PROGRESS = 3
+STATE_SEARCH_ROOM = 4
+STATE_APPROACH_FIRE = 5
+STATE_EXTINGUISH_FIRE = 6
+STATE_RETURN_HOME = 7
+STATE_DONE = 8
 
 
 def getStamped(pose):
@@ -34,7 +36,7 @@ def getStamped(pose):
 class FirebotStateMachine(Node):
 
     next_room = -1
-    state = STATE_WAIT_FOR_START
+    state = STATE_WAIT_FOR_PUSH
 
     def __init__(self):
         super().__init__('firebot')
@@ -51,6 +53,9 @@ class FirebotStateMachine(Node):
         self.odom_sub = self.create_subscription(Odometry, 'base_controller/odom',
                                                  self.odom_callback, 1)
 
+        # Create an Etherbotix instance for interacting with IO
+        self.etherbotix = Etherbotix('192.168.0.42', 6707)
+
         # Publish twist command for local panning motions
         self.cmd_pub = self.create_publisher(Twist, 'base_controller/command', 1)
         self.search_targets = None
@@ -61,7 +66,6 @@ class FirebotStateMachine(Node):
         self.nav2.waitUntilNav2Active()
         self.get_logger().info('Nav2 is active')
 
-        self.state = STATE_SEARCH_ROOM
         self.timer = self.create_timer(0.01, self.control_loop)
 
     def control_loop(self):
@@ -69,10 +73,26 @@ class FirebotStateMachine(Node):
             self.get_logger().warn('Not yet ready - waiting for odom')
             return
 
-        if self.state == STATE_WAIT_FOR_START:
-            # TODO: wait for start button to be pressed
-            #       once pressed, localize robot to start pose and set state to nav
+        if self.state == STATE_WAIT_FOR_PUSH:
+            # Board state must be valid
+            self.etherbotix.update()
+            if self.etherbotix.get_system_time() == 0:
+                return
+
+            # Button must be pressed
+            if self.etherbotix.get_digital_in() & 0x80 == 0:
+                return
+
             self.get_logger().info('Start button pressed')
+            self.state = STATE_WAIT_FOR_RELEASE
+
+        elif self.state == STATE_WAIT_FOR_RELEASE:
+            # Button must be released
+            self.etherbotix.update()
+            if self.etherbotix.get_digital_in() & 0x80 > 0:
+                return
+
+            self.get_logger().info('Start button released - go!')
             self.nav2.setInitialPose(getStamped(HOME))
             self.state = STATE_NAV_TO_NEXT_ROOM
 
@@ -113,7 +133,13 @@ class FirebotStateMachine(Node):
 
         elif self.state == STATE_EXTINGUISH_FIRE:
             # TODO: turn on fan, rotate back and forth
+            self.enable_fan(True)
             pass
+
+        elif self.state == STATE_RETURN_HOME:
+            self.enable_fan(False)
+            # TODO: actually return home
+            self.state = STATE_DONE
 
         elif self.state == STATE_DONE:
             self.get_logger().info('Done')
@@ -163,6 +189,16 @@ class FirebotStateMachine(Node):
         msg.linear.x = 0.0
         msg.angular.z = 0.0
         self.cmd_pub.publish(msg)
+
+    #
+    # Etherbotix IO Helpers
+    #
+
+    def enable_fan(self, enable):
+        fan_pin = 6
+        fan_en = 1 if enable else 0
+        fan_dir = 1
+        self.etherbotix.set_digital_pin(fan_pin, fan_en, fan_dir)
 
     #
     # ROS2 Callbacks
