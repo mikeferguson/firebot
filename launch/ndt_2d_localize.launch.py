@@ -19,9 +19,7 @@ def generate_launch_description():
             executable='ndt_2d_map_node',
             name='ndt_2d_map_node',
             output='screen',
-            parameters=[{'resolution': 0.01,
-                         'ndt_resolution': 0.05,
-                         'occupancy_threshold': 0.05,
-                         'enable_mapping': False,
-                         'map_file': os.path.join(bringup_dir, 'config', 'full_map')}]),
+            parameters=[{'map_file': os.path.join(bringup_dir, 'config', 'full_map')},
+                        os.path.join(bringup_dir, 'config', 'ndt_localization.yaml')]
+        )
     ])
