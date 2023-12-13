@@ -25,6 +25,10 @@ class LeptonDriver(Node):
         # TODO: load this from parameter
         self.mode = self.MODE_RAW_TEMP
 
+        # Flame threshold in degrees C
+        self.declare_parameter('flame_thresh', 100)
+        self.flame_thresh = self.get_parameter('flame_thresh').value
+
         self.cv_bridge = cv_bridge.CvBridge()
         self.img_pub = self.create_publisher(Image, 'image', 1)
         self.region_pub = self.create_publisher(RegionOfInterest, 'region', 1)
@@ -55,8 +59,8 @@ class LeptonDriver(Node):
 
             image = self.cv_bridge.cv2_to_imgmsg(frame, 'mono16')
 
-            # Now look for fire (anything above 50C)
-            FIRE_CUTOFF = 50 * 100
+            # Now look for fire (anything above FLAM_THRESH degrees C)
+            FIRE_CUTOFF = self.flame_thresh * 100
             candle_pix = np.transpose((frame > FIRE_CUTOFF).nonzero())
             num_candle_pix = len(candle_pix)
             if num_candle_pix == 0:
