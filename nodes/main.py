@@ -15,16 +15,21 @@ from rclpy.node import Node
 from sensor_msgs.msg import RegionOfInterest
 
 # States
-STATE_WAIT_FOR_PUSH = 0
-STATE_WAIT_FOR_RELEASE = 1
-STATE_NAV_TO_NEXT_ROOM = 2
-STATE_NAV_IN_PROGRESS = 3
-STATE_SEARCH_ROOM = 4
-STATE_APPROACH_FIRE = 5
-STATE_EXTINGUISH_FIRE = 6
-STATE_RETURN_HOME = 7
-STATE_DONE = 8
+STATE_CONFIGURE = 0
+STATE_WAIT_FOR_PUSH = 1
+STATE_WAIT_FOR_RELEASE = 2
+STATE_NAV_TO_NEXT_ROOM = 3
+STATE_NAV_IN_PROGRESS = 4
+STATE_SEARCH_ROOM = 5
+STATE_APPROACH_FIRE = 6
+STATE_EXTINGUISH_FIRE = 7
+STATE_RETURN_HOME = 8
+STATE_DONE = 9
 
+# Etherbotix I/O
+START_BUTTON = 0x80
+START_BUTTON_PIN = 7
+FAN_PIN = 6
 
 def getStamped(pose):
     ps = PoseStamped()
@@ -36,7 +41,7 @@ def getStamped(pose):
 class FirebotStateMachine(Node):
 
     next_room = -1
-    state = STATE_WAIT_FOR_PUSH
+    state = STATE_CONFIGURE
 
     def __init__(self):
         super().__init__('firebot')
@@ -73,14 +78,20 @@ class FirebotStateMachine(Node):
             self.get_logger().warn('Not yet ready - waiting for odom')
             return
 
-        if self.state == STATE_WAIT_FOR_PUSH:
-            # Board state must be valid
-            self.etherbotix.update()
-            if self.etherbotix.get_system_time() == 0:
+        if self.state == STATE_CONFIGURE:
+            # Set start button as input, with pullup
+            if not self.etherbotix.set_digital_pin(START_BUTTON_PIN, 1, 0):
+                self.get_logger().warn('Etherbotix not yet responding')
+                self.etherbotix.update()
                 return
 
+            # Etherbotix is now configured - wait for start button
+            self.state = STATE_WAIT_FOR_PUSH
+
+        if self.state == STATE_WAIT_FOR_PUSH:
             # Button must be pressed
-            if self.etherbotix.get_digital_in() & 0x80 == 0:
+            self.etherbotix.update()
+            if self.etherbotix.get_digital_in() & START_BUTTON > 0:
                 return
 
             self.get_logger().info('Start button pressed')
@@ -89,7 +100,7 @@ class FirebotStateMachine(Node):
         elif self.state == STATE_WAIT_FOR_RELEASE:
             # Button must be released
             self.etherbotix.update()
-            if self.etherbotix.get_digital_in() & 0x80 > 0:
+            if self.etherbotix.get_digital_in() & START_BUTTON == 0:
                 return
 
             self.get_logger().info('Start button released - go!')
@@ -195,10 +206,9 @@ class FirebotStateMachine(Node):
     #
 
     def enable_fan(self, enable):
-        fan_pin = 6
         fan_en = 1 if enable else 0
         fan_dir = 1
-        self.etherbotix.set_digital_pin(fan_pin, fan_en, fan_dir)
+        self.etherbotix.set_digital_pin(FAN_PIN, fan_en, fan_dir)
 
     #
     # ROS2 Callbacks
