@@ -31,6 +31,7 @@ START_BUTTON = 0x80
 START_BUTTON_PIN = 7
 FAN_PIN = 6
 
+
 def getStamped(pose):
     ps = PoseStamped()
     ps.header.frame_id = 'map'
@@ -135,17 +136,42 @@ class FirebotStateMachine(Node):
                 self.state = STATE_NAV_TO_NEXT_ROOM
             elif self.roi is not None:
                 # We have a candle! Stop the robot
+                self.get_logger().info('Candle found!')
                 self.stop_motion()
                 self.state = STATE_APPROACH_FIRE
 
         elif self.state == STATE_APPROACH_FIRE:
-            # TODO: approach the fire
-            pass
+            # Approach the fire
+            msg = Twist()
+            # TODO: better stopping condition?
+            if self.roi.width > 12:
+                # Stop the approach and put out the fire
+                self.get_logger().info('Approach complete - attempt to extinguish!')
+                self.cmd_pub.publish(msg)
+                self.state = STATE_EXTINGUISH_FIRE
+                # Setup panning action
+                self.search_targets = [self.odom_th + pi / 4, self.odom_th - pi / 8, self.odom_th]
+                return
+            msg.linear.x = 0.035
+            msg.angular.z = 0.02 * (self.roi.y_offset - 80)
+            msg.angular.z = min(msg.angular.z, 0.35)
+            msg.angular.z = max(msg.angular.z, -0.35)
+            self.cmd_pub.publish(msg)
 
         elif self.state == STATE_EXTINGUISH_FIRE:
-            # TODO: turn on fan, rotate back and forth
+            # Turn on fan
             self.enable_fan(True)
-            pass
+            # Rotate back and forth, up to 0.5 rad/s
+            if self.pan_to_targets(0.5):
+                if self.roi is None:
+                    self.get_logger().warn('Fire is extinguished!')
+                    self.state = STATE_RETURN_HOME
+                else:
+                    # Still seeing fire - go again
+                    self.get_logger().info('Attempting to extinguish (again)')
+                    self.roi = None
+                    self.search_targets = [self.odom_th + pi / 4,
+                                           self.odom_th - pi / 8, self.odom_th]
 
         elif self.state == STATE_RETURN_HOME:
             self.enable_fan(False)
@@ -164,7 +190,7 @@ class FirebotStateMachine(Node):
     #
     # When a target is reached (based on odometry), it will be
     # removed from the list of targets.
-    def pan_to_targets(self):
+    def pan_to_targets(self, velocity_lim=0.35):
         # Note if we have panned to all targets
         if self.search_targets is None or len(self.search_targets) == 0:
             self.stop_motion()
@@ -187,8 +213,8 @@ class FirebotStateMachine(Node):
         msg = Twist()
         msg.linear.x = 0.0
         msg.angular.z = 2 * shortest_angular_distance(self.odom_th, target)
-        msg.angular.z = min(msg.angular.z, 0.35)
-        msg.angular.z = max(msg.angular.z, -0.35)
+        msg.angular.z = min(msg.angular.z, velocity_lim)
+        msg.angular.z = max(msg.angular.z, -velocity_lim)
         self.cmd_pub.publish(msg)
 
         # Not done panning yet
@@ -227,7 +253,10 @@ class FirebotStateMachine(Node):
 
 if __name__ == '__main__':
     rclpy.init()
-    node = FirebotStateMachine()
-    rclpy.spin(node)
-    node.destroy_node()
-    rclpy.shutdown()
+    try:
+        node = FirebotStateMachine()
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        node.enable_fan(False)
+        node.destroy_node()
+        rclpy.shutdown()
