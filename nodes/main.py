@@ -2,6 +2,7 @@
 
 # Standard library
 from math import atan2, pi, radians
+import time
 
 # ROS2
 from action_msgs.msg import GoalStatus
@@ -35,13 +36,6 @@ STATE_DONE = 9
 START_BUTTON = 0x80
 START_BUTTON_PIN = 7
 FAN_PIN = 6
-
-
-def getStamped(pose):
-    ps = PoseStamped()
-    ps.header.frame_id = 'map'
-    ps.pose = pose
-    return ps
 
 
 class FirebotStateMachine(Node):
@@ -94,6 +88,10 @@ class FirebotStateMachine(Node):
                 self.get_logger().warn('Etherbotix not yet responding')
                 self.etherbotix.update()
                 return
+
+            # Extra update so that we have the correct digital config
+            self.etherbotix.update()
+            time.sleep(0.5)
 
             # Etherbotix is now configured - wait for start button
             self.state = STATE_WAIT_FOR_PUSH
@@ -241,6 +239,7 @@ class FirebotStateMachine(Node):
 
     # @brief Localize at a geometry_msgs/Pose
     def localize(self, pose):
+        self.get_logger().info("Localizing robot")
         msg = PoseWithCovarianceStamped()
         msg.header.frame_id = 'map'
         msg.header.stamp = self.get_clock().now().to_msg()
@@ -261,7 +260,7 @@ class FirebotStateMachine(Node):
 
         try:
             p = self.buffer.transform(p, 'map').pose
-        except Exception as e:
+        except Exception:
             self.get_logger().error("Transform exception")
             return False
 
@@ -285,17 +284,24 @@ class FirebotStateMachine(Node):
         goal.pose.pose = pose
 
         # Send goal and wait for goal to be accepted or rejected
-        send_goal_future = self.nav2_action_client.send_goal_async(goal)
-        rclpy.spin_until_future_complete(self, send_goal_future)
-        self.nav2_goal_handle = send_goal_future.result()
+        self.nav2_goal_future = self.nav2_action_client.send_goal_async(goal)
+        self.nav2_goal_future.add_done_callback(self.nav2_goal_callback)
 
-        if not self.nav2_goal_handle.accepted:
-            self.get_logger().warn('Nav2 rejected goal')
+    # @brief NavigateToPose async goal callback
+    def nav2_goal_callback(self, future):
+        goal_handle = future.result()
+        if goal_handle.accepted:
+            self.get_logger().info('Nav2 goal was accepted')
+            self.nav2_result_future = goal_handle.get_result_async()
+            self.nav2_result_future.add_done_callback(self.nav2_result_callback)
+        else:
+            self.get_logger().warn('Nav2 goal was rejected')
             self.nav2_result = "NOT ACCEPTED"
-            return False
 
-        self.nav2_goal_handle.add_done_callback(self.nav2_result_callback)
-        return True
+    # @brief NavigateToPose async result callback
+    def nav2_result_callback(self, future):
+        self.nav2_result = future.result().status
+        print(future.result())
 
     #
     # Etherbotix IO Helpers
@@ -325,10 +331,6 @@ class FirebotStateMachine(Node):
         self.map_x = msg.pose.pose.position.x
         self.map_y = msg.pose.pose.position.x
         self.map_th = atan2(msg.pose.pose.orientation.z, msg.pose.pose.orientation.w) * 2.0
-
-    # @brief NavigateToPose async result callback
-    def nav2_result_callback(self, future):
-        self.nav2_result = future.result().status
 
 
 if __name__ == '__main__':
