@@ -78,8 +78,8 @@ controller_server:
       min_in_place_vel_theta: 0.6
       acc_lim_x: 0.2
       acc_lim_theta: 0.75
-      min_lookahead: 0.05
-      max_lookahead: 0.15
+      min_lookahead: 0.01
+      max_lookahead: 0.25
       initial_rotate_tolerance: 0.25
       prefer_final_rotation: true
       yaw_filter_tolerance: 0.785
