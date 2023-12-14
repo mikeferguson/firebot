@@ -4,15 +4,20 @@
 from math import atan2, pi, radians
 
 # ROS2
+from action_msgs.msg import GoalStatus
 from angles import shortest_angular_distance
 from etherbotix import Etherbotix
-from geometry_msgs.msg import PoseStamped, Twist
-from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
+from geometry_msgs.msg import PoseWithCovarianceStamped, PoseStamped, Twist
+from nav2_msgs.action import NavigateToPose
 from nav_msgs.msg import Odometry
 from poses import HOME, ROOMS
 import rclpy
+from rclpy.action import ActionClient
 from rclpy.node import Node
 from sensor_msgs.msg import RegionOfInterest
+import tf2_geometry_msgs
+from tf2_ros.buffer import Buffer
+from tf2_ros.transform_listener import TransformListener
 
 # States
 STATE_CONFIGURE = 0
@@ -62,15 +67,19 @@ class FirebotStateMachine(Node):
         # Create an Etherbotix instance for interacting with IO
         self.etherbotix = Etherbotix('192.168.0.42', 6707)
 
+        # TF interface
+        self.buffer = Buffer()
+        self.listener = TransformListener(self.buffer, self)
+
         # Publish twist command for local panning motions
         self.cmd_pub = self.create_publisher(Twist, 'base_controller/command', 1)
         self.search_targets = None
 
+        # Localization
+        self.initial_pose_pub = self.create_publisher(PoseWithCovarianceStamped, 'initialpose', 1)
+
         # Action interface to nav2
-        self.nav2 = BasicNavigator()
-        self.get_logger().info('Waiting for nav2')
-        self.nav2.waitUntilNav2Active()
-        self.get_logger().info('Nav2 is active')
+        self.nav2_action_client = ActionClient(self, NavigateToPose, 'navigate_to_pose')
 
         self.timer = self.create_timer(0.01, self.control_loop)
 
@@ -105,24 +114,23 @@ class FirebotStateMachine(Node):
                 return
 
             self.get_logger().info('Start button released - go!')
-            self.nav2.setInitialPose(getStamped(HOME))
+            self.localize(HOME)
             self.state = STATE_NAV_TO_NEXT_ROOM
 
         elif self.state == STATE_NAV_TO_NEXT_ROOM:
             self.next_room += 1
-            self.get_logger().info('Navigating to room %d', self.next_room)
-            self.nav2.goToPose(getStamped(ROOMS[self.next_room]))
+            self.get_logger().info('Navigating to room %d' % self.next_room)
+            self.go_to_pose(ROOMS[self.next_room])
             self.state = STATE_NAV_IN_PROGRESS
 
         elif self.state == STATE_NAV_IN_PROGRESS:
-            if self.nav2.isTaskComplete():
-                result = self.nav2.getResult()
-                if result == TaskResult.SUCCEEDED:
+            if self.nav2_result is not None:
+                if self.nav2_result == GoalStatus.STATUS_SUCCEEDED:
                     self.state = STATE_SEARCH_ROOM
                 else:
                     # Send goal again
-                    self.get_logger().info('Retry nav2 to room %d', self.next_room)
-                    self.nav2.goToPose(getStamped(ROOMS[self.next_room]))
+                    self.get_logger().info('Retry nav2 to room %d' % self.next_room)
+                    self.go_to_pose(ROOMS[self.next_room])
 
         elif self.state == STATE_SEARCH_ROOM:
             # Rotate the robot looking for candle
@@ -228,6 +236,68 @@ class FirebotStateMachine(Node):
         self.cmd_pub.publish(msg)
 
     #
+    # Navigation Helpers
+    #
+
+    # @brief Localize at a geometry_msgs/Pose
+    def localize(self, pose):
+        msg = PoseWithCovarianceStamped()
+        msg.header.frame_id = 'map'
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.pose.pose = pose
+        # Smaller covariance since we are in a tight arena
+        msg.pose.covariance[0] = 0.0125
+        msg.pose.covariance[7] = 0.0125
+        msg.pose.covariance[35] = 0.06853891909122467
+        while not self._localized_at(pose):
+            self.initial_pose_pub.publish(msg)
+            rclpy.spin_once(self, timeout_sec=1.0)
+
+    # @brief Internal helper
+    def _localized_at(self, pose, tol=0.1):
+        p = PoseStamped()
+        p.header.frame_id = 'base_link'
+        p.pose.orientation.w = 1.0
+
+        try:
+            p = self.buffer.transform(p, 'map').pose
+        except Exception as e:
+            self.get_logger().error("Transform exception")
+            return False
+
+        if abs(p.position.x - pose.position.x) > tol or abs(p.position.y - pose.position.y) > tol:
+            return False
+
+        return True
+
+    # @brief Navigate to a geometry_msgs/Pose
+    def go_to_pose(self, pose):
+        while not self.nav2_action_client.wait_for_server(timeout_sec=1.0):
+            self.get_logger().info('Waiting for nav2 action server')
+
+        # Clear any previous result
+        self.nav2_result = None
+
+        # Setup goal
+        goal = NavigateToPose.Goal()
+        goal.pose.header.frame_id = 'map'
+        goal.pose.header.stamp = self.get_clock().now().to_msg()
+        goal.pose.pose = pose
+
+        # Send goal and wait for goal to be accepted or rejected
+        send_goal_future = self.nav2_action_client.send_goal_async(goal)
+        rclpy.spin_until_future_complete(self, send_goal_future)
+        self.nav2_goal_handle = send_goal_future.result()
+
+        if not self.nav2_goal_handle.accepted:
+            self.get_logger().warn('Nav2 rejected goal')
+            self.nav2_result = "NOT ACCEPTED"
+            return False
+
+        self.nav2_goal_handle.add_done_callback(self.nav2_result_callback)
+        return True
+
+    #
     # Etherbotix IO Helpers
     #
 
@@ -249,6 +319,16 @@ class FirebotStateMachine(Node):
         self.odom_x = msg.pose.pose.position.x
         self.odom_y = msg.pose.pose.position.x
         self.odom_th = atan2(msg.pose.pose.orientation.z, msg.pose.pose.orientation.w) * 2.0
+
+    # @brief AMCL pose callback
+    def amcl_callback(self, msg):
+        self.map_x = msg.pose.pose.position.x
+        self.map_y = msg.pose.pose.position.x
+        self.map_th = atan2(msg.pose.pose.orientation.z, msg.pose.pose.orientation.w) * 2.0
+
+    # @brief NavigateToPose async result callback
+    def nav2_result_callback(self, future):
+        self.nav2_result = future.result().status
 
 
 if __name__ == '__main__':
