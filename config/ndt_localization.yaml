@@ -13,7 +13,6 @@ ndt_2d_map_node:
     robot_frame: "base_link"
     transform_timeout: 0.2
     use_particle_filter: True
-    use_sim_time: True
     local_scan_matcher:
       laser_max_beams: 100
       ndt_resolution: 0.05
