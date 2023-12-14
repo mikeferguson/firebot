@@ -2,7 +2,6 @@
 
 # Standard library
 from math import atan2, pi, radians
-import time
 
 # ROS2
 from action_msgs.msg import GoalStatus
@@ -91,7 +90,6 @@ class FirebotStateMachine(Node):
 
             # Extra update so that we have the correct digital config
             self.etherbotix.update()
-            time.sleep(0.5)
 
             # Etherbotix is now configured - wait for start button
             self.state = STATE_WAIT_FOR_PUSH
@@ -260,8 +258,9 @@ class FirebotStateMachine(Node):
 
         try:
             p = self.buffer.transform(p, 'map').pose
-        except Exception:
+        except Exception as e:
             self.get_logger().error("Transform exception")
+            print(e)
             return False
 
         if abs(p.position.x - pose.position.x) > tol or abs(p.position.y - pose.position.y) > tol:
