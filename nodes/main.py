@@ -7,7 +7,7 @@ from math import atan2, pi, radians
 from action_msgs.msg import GoalStatus
 from angles import shortest_angular_distance
 from etherbotix import Etherbotix
-from geometry_msgs.msg import PoseWithCovarianceStamped, PoseStamped, Twist
+from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped, Twist
 from nav2_msgs.action import NavigateToPose
 from nav_msgs.msg import Odometry
 from poses import HOME, ROOMS
@@ -15,7 +15,7 @@ import rclpy
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from sensor_msgs.msg import RegionOfInterest
-import tf2_geometry_msgs
+import tf2_geometry_msgs  # noqa
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 
@@ -29,7 +29,8 @@ STATE_SEARCH_ROOM = 5
 STATE_APPROACH_FIRE = 6
 STATE_EXTINGUISH_FIRE = 7
 STATE_RETURN_HOME = 8
-STATE_DONE = 9
+STATE_RETURN_HOME_IN_PROGRESS = 9
+STATE_DONE = 10
 
 # Etherbotix I/O
 START_BUTTON = 0x80
@@ -179,8 +180,18 @@ class FirebotStateMachine(Node):
 
         elif self.state == STATE_RETURN_HOME:
             self.enable_fan(False)
-            # TODO: actually return home
-            self.state = STATE_DONE
+            self.get_logger().info('Navigating to HOME')
+            self.go_to_pose(HOME)
+            self.state = STATE_RETURN_HOME_IN_PROGRESS
+
+        elif self.state == STATE_RETURN_HOME_IN_PROGRESS:
+            if self.nav2_result is not None:
+                if self.nav2_result == GoalStatus.STATUS_SUCCEEDED:
+                    self.state = STATE_DONE
+                else:
+                    # Send goal again
+                    self.get_logger().info('Retry nav2 to HOME')
+                    self.go_to_pose(HOME)
 
         elif self.state == STATE_DONE:
             self.get_logger().info('Done')
@@ -237,7 +248,7 @@ class FirebotStateMachine(Node):
 
     # @brief Localize at a geometry_msgs/Pose
     def localize(self, pose):
-        self.get_logger().info("Localizing robot")
+        self.get_logger().info('Localizing robot')
         msg = PoseWithCovarianceStamped()
         msg.header.frame_id = 'map'
         msg.header.stamp = self.get_clock().now().to_msg()
@@ -259,7 +270,7 @@ class FirebotStateMachine(Node):
         try:
             p = self.buffer.transform(p, 'map').pose
         except Exception as e:
-            self.get_logger().error("Transform exception")
+            self.get_logger().error('Transform exception')
             print(e)
             return False
 
@@ -295,7 +306,7 @@ class FirebotStateMachine(Node):
             self.nav2_result_future.add_done_callback(self.nav2_result_callback)
         else:
             self.get_logger().warn('Nav2 goal was rejected')
-            self.nav2_result = "NOT ACCEPTED"
+            self.nav2_result = 'NOT ACCEPTED'
 
     # @brief NavigateToPose async result callback
     def nav2_result_callback(self, future):
