@@ -158,7 +158,7 @@ class FirebotStateMachine(Node):
                 self.search_targets = [self.odom_th + pi / 4, self.odom_th - pi / 8, self.odom_th]
                 return
             msg.linear.x = 0.035
-            msg.angular.z = 0.02 * (self.roi.y_offset - 80)
+            msg.angular.z = 0.02 * (80 - self.roi.y_offset)
             msg.angular.z = min(msg.angular.z, 0.35)
             msg.angular.z = max(msg.angular.z, -0.35)
             self.cmd_pub.publish(msg)
