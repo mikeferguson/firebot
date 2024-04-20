@@ -6,7 +6,7 @@ ndt_2d_map_node:
     odom_alpha4: 0.02
     enable_mapping: False
     minimum_travel_distance: 0.1
-    minimum_travel_rotation: 1.0
+    minimum_travel_rotation: 0.5
     occupancy_threshold: 0.05
     odom_frame: "odom"
     resolution: 0.01

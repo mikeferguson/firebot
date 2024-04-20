@@ -1,0 +1,35 @@
+rosbag2_bagfile_information:
+  version: 7
+  storage_identifier: mcap
+  duration:
+    nanoseconds: 0
+  starting_time:
+    nanoseconds_since_epoch: 0
+  message_count: 229
+  topics_with_message_count:
+    - topic_metadata:
+        name: constraints
+        type: ndt_2d/msg/Constraint
+        serialization_format: cdr
+        offered_qos_profiles: ""
+        type_description_hash: ""
+      message_count: 114
+    - topic_metadata:
+        name: scans
+        type: ndt_2d/msg/Scan
+        serialization_format: cdr
+        offered_qos_profiles: ""
+        type_description_hash: ""
+      message_count: 115
+  compression_format: ""
+  compression_mode: ""
+  relative_file_paths:
+    - robogames.mcap
+  files:
+    - path: robogames.mcap
+      starting_time:
+        nanoseconds_since_epoch: 0
+      duration:
+        nanoseconds: 0
+      message_count: 229
+  custom_data: ~
