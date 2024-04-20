@@ -1,0 +1,30 @@
+ndt_2d_map_node:
+  ros__parameters:
+    enable_mapping: True
+    global_search_size: 0.2
+    global_search_limit: 3
+    minimum_travel_distance: 0.1
+    minimum_travel_rotation: 0.5
+    occupancy_threshold: 0.05
+    odom_frame: "odom"
+    resolution: 0.01
+    robot_frame: "base_link"
+    rolling_depth: 10
+    transform_timeout: 0.2
+    use_barycenter: True
+    use_particle_filter: False
+    local_scan_matcher:
+      laser_max_beams: 100
+      ndt_resolution: 0.05
+      search_angular_resolution: 0.0025
+      search_angular_size: 0.1
+      search_linear_resolution: 0.005
+      search_linear_size: 0.05
+    global_scan_matcher:
+      laser_max_beams: 100
+      ndt_resolution: 0.05
+      search_angular_resolution: 0.0025
+      search_angular_size: 0.1
+      search_linear_resolution: 0.005
+      search_linear_size: 0.05
+

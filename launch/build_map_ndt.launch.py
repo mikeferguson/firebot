@@ -11,30 +11,14 @@ from launch_ros.actions import Node
 def generate_launch_description():
     # Get the launch directory
     bringup_dir = get_package_share_directory('firebot')
-    lifecycle_nodes = ['map_server', 'amcl']
 
     return LaunchDescription([
 
         Node(
-            package='nav2_map_server',
-            executable='map_server',
-            name='map_server',
+            package='ndt_2d',
+            executable='ndt_2d_map_node',
+            name='ndt_2d_map_node',
             output='screen',
-            parameters=[{'yaml_filename':
-                         os.path.join(bringup_dir, 'config', 'map_shrunk_arena.yaml')}]),
+            parameters=[get_package_share_directory('firebot') + '/config/ndt_mapping.yaml']),
 
-        Node(
-            package='nav2_amcl',
-            executable='amcl',
-            name='amcl',
-            output='screen',
-            parameters=[os.path.join(bringup_dir, 'config', 'nav2_params.yaml')]),
-
-        Node(
-            package='nav2_lifecycle_manager',
-            executable='lifecycle_manager',
-            name='lifecycle_manager_localization',
-            output='screen',
-            parameters=[{'autostart': True},
-                        {'node_names': lifecycle_nodes}])
     ])
