@@ -31,7 +31,11 @@ install(
 )
 
 install(
-  PROGRAMS nodes/lepton_driver.py
+  PROGRAMS
+    nodes/lepton_driver.py
+    nodes/localize.py
+    nodes/main.py
+    nodes/poses.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
